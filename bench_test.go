@@ -737,7 +737,7 @@ func BenchmarkToHTML_WithOptions(b *testing.B) {
 		ParagraphTag: "div",
 		LinkTarget:   "_self",
 		ClassPrefix:  "my",
-		EncodeHTML:    true,
+		EncodeHTML:   true,
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

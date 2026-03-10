@@ -107,13 +107,13 @@ func TestCompose_AttributeRemoval(t *testing.T) {
 func TestCompose_MixedOps(t *testing.T) {
 	doc := New(nil).Insert("ABCDEF", nil)
 	change := New(nil).
-		Retain(1, nil).        // A
-		Delete(1).             // remove B
-		Retain(1, nil).        // C
-		Insert("X", nil).      // insert X after C
-		Delete(1).             // remove D
-		Retain(1, nil).        // E
-		Insert("Y", nil)       // insert Y after E
+		Retain(1, nil).   // A
+		Delete(1).        // remove B
+		Retain(1, nil).   // C
+		Insert("X", nil). // insert X after C
+		Delete(1).        // remove D
+		Retain(1, nil).   // E
+		Insert("Y", nil)  // insert Y after E
 	result := doc.Compose(change)
 	text := extractText(result)
 	if text != "ACXEYF" {
@@ -875,6 +875,9 @@ func TestEmbed_Clone(t *testing.T) {
 	if a.Key != "image" {
 		t.Error("clone mutated original")
 	}
+	if b.Key != "video" {
+		t.Error("clone key not updated")
+	}
 }
 
 func TestEmbed_StringData(t *testing.T) {
@@ -980,7 +983,7 @@ func TestRuneSubstr(t *testing.T) {
 		{"Hello", 0, 0, ""},
 		{"Hello", 5, 0, ""},
 		{"", 0, 0, ""},
-		{"abc", 0, 10, "abc"},       // length > available
+		{"abc", 0, 10, "abc"},        // length > available
 		{"Привет", 0, 100, "Привет"}, // length > available
 	}
 	for _, c := range cases {
@@ -1268,9 +1271,9 @@ func TestReduce_Empty(t *testing.T) {
 
 func extractText(d *Delta) string {
 	var b strings.Builder
-	for _, op := range d.Ops {
-		if op.Insert.IsText() {
-			b.WriteString(op.Insert.Text())
+	for i := range d.Ops {
+		if d.Ops[i].Insert.IsText() {
+			b.WriteString(d.Ops[i].Insert.Text())
 		}
 	}
 	return b.String()

@@ -12,13 +12,13 @@ import (
 
 // TelegramEntity represents a Telegram MessageEntity with UTF-16 offsets.
 type TelegramEntity struct {
-	Type           string `json:"type"`
-	Offset         int    `json:"offset"`           // UTF-16 code units
-	Length         int    `json:"length"`            // UTF-16 code units
-	URL            string `json:"url,omitempty"`     // text_link
-	UserID         int64  `json:"user_id,omitempty"` // text_mention
-	Language       string `json:"language,omitempty"`
-	CustomEmojiID  string `json:"custom_emoji_id,omitempty"`
+	Type          string `json:"type"`
+	Offset        int    `json:"offset"`            // UTF-16 code units
+	Length        int    `json:"length"`            // UTF-16 code units
+	URL           string `json:"url,omitempty"`     // text_link
+	UserID        int64  `json:"user_id,omitempty"` // text_mention
+	Language      string `json:"language,omitempty"`
+	CustomEmojiID string `json:"custom_emoji_id,omitempty"`
 }
 
 // Telegram entity type constants.
@@ -53,12 +53,12 @@ const (
 func ToTelegram(d *Delta) (string, []TelegramEntity) {
 	// First pass: compute total text length
 	totalRunes := 0
-	for _, op := range d.Ops {
-		if !op.Insert.IsSet() {
+	for i := range d.Ops {
+		if !d.Ops[i].Insert.IsSet() {
 			continue
 		}
-		if op.Insert.IsText() {
-			totalRunes += len([]rune(op.Insert.Text()))
+		if d.Ops[i].Insert.IsText() {
+			totalRunes += len([]rune(d.Ops[i].Insert.Text()))
 		}
 		// embeds skipped for Telegram (no embed representation)
 	}
@@ -69,26 +69,26 @@ func ToTelegram(d *Delta) (string, []TelegramEntity) {
 	var entities []TelegramEntity
 	utf16Offset := 0
 
-	for _, op := range d.Ops {
-		if !op.Insert.IsSet() {
+	for i := range d.Ops {
+		if !d.Ops[i].Insert.IsSet() {
 			continue
 		}
 
-		if op.Insert.IsEmbed() {
+		if d.Ops[i].Insert.IsEmbed() {
 			// Skip embeds — Telegram doesn't support inline embeds in text
 			continue
 		}
 
-		text := op.Insert.Text()
-		if len(text) == 0 {
+		text := d.Ops[i].Insert.Text()
+		if text == "" {
 			continue
 		}
 
 		utf16Len := utf16RuneLen(text)
 
 		// Extract entities from attributes
-		if len(op.Attributes) > 0 {
-			entities = appendTelegramEntities(entities, op.Attributes, utf16Offset, utf16Len)
+		if len(d.Ops[i].Attributes) > 0 {
+			entities = appendTelegramEntities(entities, d.Ops[i].Attributes, utf16Offset, utf16Len)
 		}
 
 		textBuf.WriteString(text)
@@ -169,18 +169,18 @@ func ToTelegramFull(d *Delta) (string, []TelegramEntity) {
 		}
 
 		// Line content
-		for _, op := range line.Ops {
-			if !op.Insert.IsSet() || !op.Insert.IsText() {
+		for j := range line.Ops {
+			if !line.Ops[j].Insert.IsSet() || !line.Ops[j].Insert.IsText() {
 				continue
 			}
-			text := op.Insert.Text()
-			if len(text) == 0 {
+			text := line.Ops[j].Insert.Text()
+			if text == "" {
 				continue
 			}
 			utf16Len := utf16RuneLen(text)
 
-			if len(op.Attributes) > 0 {
-				entities = appendTelegramEntities(entities, op.Attributes, utf16Offset, utf16Len)
+			if len(line.Ops[j].Attributes) > 0 {
+				entities = appendTelegramEntities(entities, line.Ops[j].Attributes, utf16Offset, utf16Len)
 			}
 
 			textBuf.WriteString(text)
@@ -223,7 +223,7 @@ func ToTelegramFull(d *Delta) (string, []TelegramEntity) {
 // FromTelegram converts Telegram text + entities into a Delta.
 // Entities use UTF-16 offsets as per Telegram API.
 func FromTelegram(text string, entities []TelegramEntity) *Delta {
-	if len(text) == 0 {
+	if text == "" {
 		return New(nil)
 	}
 
@@ -326,7 +326,7 @@ func FromTelegram(text string, entities []TelegramEntity) *Delta {
 		runeStart := utf16ToRune[segStart]
 		runeEnd := utf16ToRune[segEnd]
 		segText := string(runes[runeStart:runeEnd])
-		if len(segText) == 0 {
+		if segText == "" {
 			continue
 		}
 

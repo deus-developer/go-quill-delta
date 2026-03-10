@@ -322,7 +322,7 @@ func TestFromTelegram_BoldItalicOverlap(t *testing.T) {
 	// "Hello World" with bold on "lo Wo" and italic on "Wo" (nested)
 	d := FromTelegram("Hello World", []TelegramEntity{
 		{Type: TGBold, Offset: 3, Length: 5},   // "lo Wo"
-		{Type: TGItalic, Offset: 6, Length: 2},  // "Wo"
+		{Type: TGItalic, Offset: 6, Length: 2}, // "Wo"
 	})
 	text := d.PlainText("")
 	if text != "Hello World" {

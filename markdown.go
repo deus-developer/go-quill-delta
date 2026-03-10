@@ -36,19 +36,19 @@ func ToMarkdown(d *Delta, opts *MarkdownOptions) string {
 	// Group into lines: collect ops until newline, then render the line
 	var lineOps []RenderOp
 
-	for _, rop := range renderOps {
-		if rop.IsNewline {
-			renderMarkdownLine(&buf, lineOps, rop, opts)
+	for i := range renderOps {
+		if renderOps[i].IsNewline {
+			renderMarkdownLine(&buf, lineOps, renderOps[i], opts)
 			lineOps = nil
 		} else {
-			lineOps = append(lineOps, rop)
+			lineOps = append(lineOps, renderOps[i])
 		}
 	}
 
 	// Remaining ops without trailing newline
 	if len(lineOps) > 0 {
-		for _, rop := range lineOps {
-			buf.WriteString(renderMarkdownInline(rop, opts))
+		for i := range lineOps {
+			buf.WriteString(renderMarkdownInline(lineOps[i], opts))
 		}
 	}
 
@@ -70,8 +70,8 @@ func renderMarkdownLine(buf *strings.Builder, ops []RenderOp, nlOp RenderOp, opt
 			}
 			buf.WriteString(strings.Repeat("#", level))
 			buf.WriteByte(' ')
-			for _, rop := range ops {
-				buf.WriteString(renderMarkdownInline(rop, opts))
+			for i := range ops {
+				buf.WriteString(renderMarkdownInline(ops[i], opts))
 			}
 			buf.WriteByte('\n')
 			return
@@ -90,9 +90,9 @@ func renderMarkdownLine(buf *strings.Builder, ops []RenderOp, nlOp RenderOp, opt
 			}
 		}
 		buf.WriteString("```" + lang + "\n")
-		for _, rop := range ops {
-			if rop.Insert.IsText() {
-				buf.WriteString(rop.Insert.Text())
+		for i := range ops {
+			if ops[i].Insert.IsText() {
+				buf.WriteString(ops[i].Insert.Text())
 			}
 		}
 		buf.WriteString("\n```\n")
@@ -103,8 +103,8 @@ func renderMarkdownLine(buf *strings.Builder, ops []RenderOp, nlOp RenderOp, opt
 	if a != nil {
 		if b, ok := a.GetBool("blockquote"); ok && b {
 			buf.WriteString("> ")
-			for _, rop := range ops {
-				buf.WriteString(renderMarkdownInline(rop, opts))
+			for i := range ops {
+				buf.WriteString(renderMarkdownInline(ops[i], opts))
 			}
 			buf.WriteByte('\n')
 			return
@@ -130,8 +130,8 @@ func renderMarkdownLine(buf *strings.Builder, ops []RenderOp, nlOp RenderOp, opt
 			case ListUnchecked:
 				buf.WriteString(prefix + "- [ ] ")
 			}
-			for _, rop := range ops {
-				buf.WriteString(renderMarkdownInline(rop, opts))
+			for i := range ops {
+				buf.WriteString(renderMarkdownInline(ops[i], opts))
 			}
 			buf.WriteByte('\n')
 			return
@@ -139,8 +139,8 @@ func renderMarkdownLine(buf *strings.Builder, ops []RenderOp, nlOp RenderOp, opt
 	}
 
 	// Regular line
-	for _, rop := range ops {
-		buf.WriteString(renderMarkdownInline(rop, opts))
+	for i := range ops {
+		buf.WriteString(renderMarkdownInline(ops[i], opts))
 	}
 	buf.WriteByte('\n')
 }
@@ -339,8 +339,8 @@ func FromMarkdown(md string) *Delta {
 	return d
 }
 
-func parseMarkdownHeader(line string) (int, string) {
-	level := 0
+func parseMarkdownHeader(line string) (level int, text string) {
+	level = 0
 	for _, c := range line {
 		if c == '#' {
 			level++
@@ -354,8 +354,8 @@ func parseMarkdownHeader(line string) (int, string) {
 	return 0, ""
 }
 
-func parseMarkdownChecklist(line string) (int, string, string) {
-	indent := 0
+func parseMarkdownChecklist(line string) (indent int, checked, text string) {
+	indent = 0
 	s := line
 	for strings.HasPrefix(s, "  ") {
 		indent++
@@ -370,8 +370,8 @@ func parseMarkdownChecklist(line string) (int, string, string) {
 	return 0, "", ""
 }
 
-func parseMarkdownBullet(line string) (int, string, bool) {
-	indent := 0
+func parseMarkdownBullet(line string) (indent int, rest string, matched bool) {
+	indent = 0
 	s := line
 	for strings.HasPrefix(s, "  ") {
 		indent++
@@ -383,8 +383,8 @@ func parseMarkdownBullet(line string) (int, string, bool) {
 	return 0, "", false
 }
 
-func parseMarkdownOrdered(line string) (int, string, bool) {
-	indent := 0
+func parseMarkdownOrdered(line string) (indent int, rest string, matched bool) {
+	indent = 0
 	s := line
 	for strings.HasPrefix(s, "  ") {
 		indent++

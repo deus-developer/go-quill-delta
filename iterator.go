@@ -79,11 +79,12 @@ func (it *Iterator) Next(length int) Op {
 		retOp.Attributes = nextOp.Attributes
 	}
 
-	if nextOp.Retain.IsCount() {
+	switch {
+	case nextOp.Retain.IsCount():
 		retOp.Retain = CountRetain(length)
-	} else if nextOp.Retain.IsEmbed() {
+	case nextOp.Retain.IsEmbed():
 		retOp.Retain = nextOp.Retain
-	} else if nextOp.Insert.IsText() {
+	case nextOp.Insert.IsText():
 		text := nextOp.Insert.Text()
 		if consumeAll && runeOff == 0 {
 			// Whole op — no substring needed
@@ -100,7 +101,7 @@ func (it *Iterator) Next(length int) Op {
 				it.byteOff = endByte
 			}
 		}
-	} else {
+	default:
 		retOp.Insert = nextOp.Insert
 	}
 

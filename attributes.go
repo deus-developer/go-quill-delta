@@ -32,7 +32,7 @@ func (m AttributeMap) GetString(key string) (string, bool) {
 }
 
 // GetBool returns the bool value for key, or (false, false).
-func (m AttributeMap) GetBool(key string) (bool, bool) {
+func (m AttributeMap) GetBool(key string) (val, ok bool) {
 	v, ok := m[key]
 	if !ok || !v.IsBool() {
 		return false, false

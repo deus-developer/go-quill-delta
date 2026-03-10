@@ -59,7 +59,7 @@ func New(ops []Op) *Delta {
 
 // Insert adds a text insert operation.
 func (d *Delta) Insert(s string, attrs AttributeMap) *Delta {
-	if len(s) == 0 {
+	if s == "" {
 		return d
 	}
 	newOp := Op{Insert: TextInsert(s)}
@@ -193,9 +193,9 @@ func (d *Delta) Chop() *Delta {
 // Filter returns ops matching the predicate.
 func (d *Delta) Filter(predicate func(op Op, index int) bool) []Op {
 	var result []Op
-	for i, op := range d.Ops {
-		if predicate(op, i) {
-			result = append(result, op)
+	for i := range d.Ops {
+		if predicate(d.Ops[i], i) {
+			result = append(result, d.Ops[i])
 		}
 	}
 	return result
@@ -203,27 +203,27 @@ func (d *Delta) Filter(predicate func(op Op, index int) bool) []Op {
 
 // ForEach calls the predicate for each op.
 func (d *Delta) ForEach(predicate func(op Op, index int)) {
-	for i, op := range d.Ops {
-		predicate(op, i)
+	for i := range d.Ops {
+		predicate(d.Ops[i], i)
 	}
 }
 
 // Map applies the predicate to each op and returns the results.
 func Map[T any](d *Delta, predicate func(op Op, index int) T) []T {
 	result := make([]T, len(d.Ops))
-	for i, op := range d.Ops {
-		result[i] = predicate(op, i)
+	for i := range d.Ops {
+		result[i] = predicate(d.Ops[i], i)
 	}
 	return result
 }
 
 // Partition splits ops into two slices: matching and non-matching.
-func (d *Delta) Partition(predicate func(op Op) bool) (matched []Op, rest []Op) {
-	for _, op := range d.Ops {
-		if predicate(op) {
-			matched = append(matched, op)
+func (d *Delta) Partition(predicate func(op Op) bool) (matched, rest []Op) {
+	for i := range d.Ops {
+		if predicate(d.Ops[i]) {
+			matched = append(matched, d.Ops[i])
 		} else {
-			rest = append(rest, op)
+			rest = append(rest, d.Ops[i])
 		}
 	}
 	return
@@ -232,8 +232,8 @@ func (d *Delta) Partition(predicate func(op Op) bool) (matched []Op, rest []Op) 
 // Reduce folds ops into a single value.
 func Reduce[T any](d *Delta, predicate func(accum T, op Op, index int) T, initial T) T {
 	accum := initial
-	for i, op := range d.Ops {
-		accum = predicate(accum, op, i)
+	for i := range d.Ops {
+		accum = predicate(accum, d.Ops[i], i)
 	}
 	return accum
 }
@@ -241,8 +241,8 @@ func Reduce[T any](d *Delta, predicate func(accum T, op Op, index int) T, initia
 // Length returns the total length of all operations.
 func (d *Delta) Length() int {
 	total := 0
-	for _, op := range d.Ops {
-		total += op.Len()
+	for i := range d.Ops {
+		total += d.Ops[i].Len()
 	}
 	return total
 }
@@ -250,11 +250,11 @@ func (d *Delta) Length() int {
 // ChangeLength returns the net change in document length.
 func (d *Delta) ChangeLength() int {
 	total := 0
-	for _, op := range d.Ops {
-		if op.Insert.IsSet() {
-			total += op.Len()
-		} else if op.Delete > 0 {
-			total -= op.Delete
+	for i := range d.Ops {
+		if d.Ops[i].Insert.IsSet() {
+			total += d.Ops[i].Len()
+		} else if d.Ops[i].Delete > 0 {
+			total -= d.Ops[i].Delete
 		}
 	}
 	return total
@@ -313,11 +313,12 @@ func (d *Delta) Compose(other *Delta) *Delta {
 
 	result := &Delta{Ops: ops}
 	for thisIter.HasNext() || otherIter.HasNext() {
-		if otherIter.PeekType() == OpInsert {
+		switch {
+		case otherIter.PeekType() == OpInsert:
 			result.push(otherIter.NextAll())
-		} else if thisIter.PeekType() == OpDelete {
+		case thisIter.PeekType() == OpDelete:
 			result.push(thisIter.NextAll())
-		} else {
+		default:
 			length := minInt(thisIter.PeekLength(), otherIter.PeekLength())
 			thisOp := thisIter.Next(length)
 			otherOp := otherIter.Next(length)
@@ -393,20 +394,22 @@ func (d *Delta) Transform(other *Delta, priority bool) *Delta {
 	result := New(nil)
 
 	for thisIter.HasNext() || otherIter.HasNext() {
-		if thisIter.PeekType() == OpInsert && (priority || otherIter.PeekType() != OpInsert) {
+		switch {
+		case thisIter.PeekType() == OpInsert && (priority || otherIter.PeekType() != OpInsert):
 			result.Retain(thisIter.NextAll().Len(), nil)
-		} else if otherIter.PeekType() == OpInsert {
+		case otherIter.PeekType() == OpInsert:
 			result.push(otherIter.NextAll())
-		} else {
+		default:
 			length := minInt(thisIter.PeekLength(), otherIter.PeekLength())
 			thisOp := thisIter.Next(length)
 			otherOp := otherIter.Next(length)
 
-			if thisOp.Delete > 0 {
+			switch {
+			case thisOp.Delete > 0:
 				continue
-			} else if otherOp.Delete > 0 {
+			case otherOp.Delete > 0:
 				result.push(otherOp)
-			} else {
+			default:
 				// Both retains
 				if thisOp.Retain.IsEmbed() && otherOp.Retain.IsEmbed() {
 					thisEmbed := thisOp.Retain.Embed()
@@ -465,31 +468,33 @@ func (d *Delta) TransformPosition(index int, priority bool) int {
 func (d *Delta) Invert(base *Delta) *Delta {
 	inverted := New(nil)
 	baseIndex := 0
-	for _, op := range d.Ops {
-		if op.Insert.IsSet() {
+	for i := range d.Ops {
+		op := d.Ops[i]
+		switch {
+		case op.Insert.IsSet():
 			inverted.Delete(op.Len())
-		} else if op.Retain.IsCount() && op.Attributes == nil {
+		case op.Retain.IsCount() && op.Attributes == nil:
 			n := op.Retain.Count()
 			inverted.Retain(n, nil)
 			baseIndex += n
-		} else if op.Delete > 0 || op.Retain.IsCount() {
+		case op.Delete > 0 || op.Retain.IsCount():
 			length := op.Delete
 			if length == 0 {
 				length = op.Retain.Count()
 			}
 			slice := base.Slice(baseIndex, baseIndex+length)
-			for _, baseOp := range slice.Ops {
+			for j := range slice.Ops {
 				if op.Delete > 0 {
-					inverted.push(baseOp)
+					inverted.push(slice.Ops[j])
 				} else if op.Retain.IsSet() && op.Attributes != nil {
 					inverted.Retain(
-						baseOp.Len(),
-						InvertAttributes(op.Attributes, baseOp.Attributes),
+						slice.Ops[j].Len(),
+						InvertAttributes(op.Attributes, slice.Ops[j].Attributes),
 					)
 				}
 			}
 			baseIndex += length
-		} else if op.Retain.IsEmbed() {
+		case op.Retain.IsEmbed():
 			slice := base.Slice(baseIndex, baseIndex+1)
 			baseOp := NewIterator(slice.Ops).NextAll()
 			thisEmbed := op.Retain.Embed()
@@ -539,12 +544,13 @@ func (d *Delta) EachLine(predicate func(line *Delta, attrs AttributeMap, index i
 		remaining := text[iter.byteOff:]
 		nlByteIdx := strings.Index(remaining, newline)
 
-		if nlByteIdx < 0 {
+		switch {
+		case nlByteIdx < 0:
 			line.push(iter.NextAll())
-		} else if nlByteIdx > 0 {
+		case nlByteIdx > 0:
 			runeCount := utf8.RuneCountInString(remaining[:nlByteIdx])
 			line.push(iter.Next(runeCount))
-		} else {
+		default:
 			nextOp := iter.Next(nlRuneLen)
 			attrs := nextOp.Attributes
 			if attrs == nil {
@@ -572,22 +578,22 @@ func (d *Delta) Diff(other *Delta) (*Delta, error) {
 	nullChar := string(rune(0))
 	var thisStr, otherStr strings.Builder
 
-	for _, op := range d.Ops {
-		if !op.Insert.IsSet() {
+	for i := range d.Ops {
+		if !d.Ops[i].Insert.IsSet() {
 			return nil, fmt.Errorf("diff() called with non-document")
 		}
-		if op.Insert.IsText() {
-			thisStr.WriteString(op.Insert.Text())
+		if d.Ops[i].Insert.IsText() {
+			thisStr.WriteString(d.Ops[i].Insert.Text())
 		} else {
 			thisStr.WriteString(nullChar)
 		}
 	}
-	for _, op := range other.Ops {
-		if !op.Insert.IsSet() {
+	for i := range other.Ops {
+		if !other.Ops[i].Insert.IsSet() {
 			return nil, fmt.Errorf("diff() called on non-document")
 		}
-		if op.Insert.IsText() {
-			otherStr.WriteString(op.Insert.Text())
+		if other.Ops[i].Insert.IsText() {
+			otherStr.WriteString(other.Ops[i].Insert.Text())
 		} else {
 			otherStr.WriteString(nullChar)
 		}

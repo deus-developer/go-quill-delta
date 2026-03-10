@@ -6,7 +6,6 @@ import (
 	"strconv"
 )
 
-
 // AttrKind identifies the type of an attribute value.
 type AttrKind int8
 
@@ -50,13 +49,13 @@ func NullAttr() AttrValue {
 
 // --- Accessors ---
 
-func (v AttrValue) Kind() AttrKind    { return v.kind }
-func (v AttrValue) IsNull() bool      { return v.kind == AttrNull }
-func (v AttrValue) IsString() bool    { return v.kind == AttrString }
-func (v AttrValue) IsBool() bool      { return v.kind == AttrBool }
-func (v AttrValue) IsNumber() bool    { return v.kind == AttrNumber }
-func (v AttrValue) StringVal() string { return v.str }
-func (v AttrValue) BoolVal() bool     { return v.b }
+func (v AttrValue) Kind() AttrKind     { return v.kind }
+func (v AttrValue) IsNull() bool       { return v.kind == AttrNull }
+func (v AttrValue) IsString() bool     { return v.kind == AttrString }
+func (v AttrValue) IsBool() bool       { return v.kind == AttrBool }
+func (v AttrValue) IsNumber() bool     { return v.kind == AttrNumber }
+func (v AttrValue) StringVal() string  { return v.str }
+func (v AttrValue) BoolVal() bool      { return v.b }
 func (v AttrValue) NumberVal() float64 { return v.num }
 
 // Equal returns true if two AttrValues are semantically equal.

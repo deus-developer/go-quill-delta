@@ -55,11 +55,12 @@ func diffRunes(a, b []rune) []diffComponent {
 		result = append(result, diffComponent{op: diffEqual, text: a[:prefixLen]})
 	}
 
-	if len(aMiddle) == 0 {
+	switch {
+	case len(aMiddle) == 0:
 		result = append(result, diffComponent{op: diffInsert, text: bMiddle})
-	} else if len(bMiddle) == 0 {
+	case len(bMiddle) == 0:
 		result = append(result, diffComponent{op: diffDelete, text: aMiddle})
-	} else {
+	default:
 		result = append(result, myersDiff(aMiddle, bMiddle)...)
 	}
 

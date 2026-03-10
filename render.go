@@ -12,10 +12,10 @@ import (
 
 // Tag represents an HTML tag with optional attributes.
 type Tag struct {
-	Name       string
-	Attrs      map[string]string
-	SelfClose  bool
-	InnerHTML  string // if set, used as content instead of children
+	Name      string
+	Attrs     map[string]string
+	SelfClose bool
+	InnerHTML string // if set, used as content instead of children
 }
 
 // RenderOp is a denormalized operation: text split at newline boundaries.
@@ -133,7 +133,7 @@ func renderGroup(g opGroup, opts *HTMLOptions) string {
 	return g.render(opts)
 }
 
-func groupOps(d *Delta, opts *HTMLOptions) []opGroup {
+func groupOps(d *Delta, _ *HTMLOptions) []opGroup {
 	// Denormalize: split text ops at newlines
 	renderOps := denormalize(d)
 	if len(renderOps) == 0 {
@@ -143,31 +143,31 @@ func groupOps(d *Delta, opts *HTMLOptions) []opGroup {
 	var groups []opGroup
 	var inlines []RenderOp
 
-	for _, rop := range renderOps {
-		if rop.Insert.IsEmbed() {
-			if rop.Insert.Embed().Key == "video" {
+	for i := range renderOps {
+		if renderOps[i].Insert.IsEmbed() {
+			if renderOps[i].Insert.Embed().Key == "video" {
 				if len(inlines) > 0 {
 					groups = append(groups, &inlineGroup{ops: inlines})
 					inlines = nil
 				}
-				groups = append(groups, &videoGroup{op: rop})
+				groups = append(groups, &videoGroup{op: renderOps[i]})
 				continue
 			}
-			inlines = append(inlines, rop)
+			inlines = append(inlines, renderOps[i])
 			continue
 		}
 
-		if rop.IsNewline {
-			if isBlockOp(rop) {
-				groups = append(groups, &blockGroup{blockOp: rop, ops: inlines})
+		if renderOps[i].IsNewline {
+			if isBlockOp(renderOps[i]) {
+				groups = append(groups, &blockGroup{blockOp: renderOps[i], ops: inlines})
 				inlines = nil
 			} else {
-				inlines = append(inlines, rop)
+				inlines = append(inlines, renderOps[i])
 				groups = append(groups, &inlineGroup{ops: inlines})
 				inlines = nil
 			}
 		} else {
-			inlines = append(inlines, rop)
+			inlines = append(inlines, renderOps[i])
 		}
 	}
 
@@ -190,29 +190,29 @@ func isBlockOp(rop RenderOp) bool {
 
 func denormalize(d *Delta) []RenderOp {
 	var result []RenderOp
-	for _, op := range d.Ops {
-		if !op.Insert.IsSet() {
+	for i := range d.Ops {
+		if !d.Ops[i].Insert.IsSet() {
 			continue
 		}
-		if op.Insert.IsEmbed() {
-			result = append(result, RenderOp{Op: op})
+		if d.Ops[i].Insert.IsEmbed() {
+			result = append(result, RenderOp{Op: d.Ops[i]})
 			continue
 		}
-		text := op.Insert.Text()
+		text := d.Ops[i].Insert.Text()
 		if text == "\n" {
-			result = append(result, RenderOp{Op: op, IsNewline: true})
+			result = append(result, RenderOp{Op: d.Ops[i], IsNewline: true})
 			continue
 		}
 		parts := splitKeepNewlines(text)
 		for _, part := range parts {
 			if part == "\n" {
 				result = append(result, RenderOp{
-					Op:        Op{Insert: TextInsert("\n"), Attributes: op.Attributes},
+					Op:        Op{Insert: TextInsert("\n"), Attributes: d.Ops[i].Attributes},
 					IsNewline: true,
 				})
 			} else {
 				result = append(result, RenderOp{
-					Op: Op{Insert: TextInsert(part), Attributes: op.Attributes},
+					Op: Op{Insert: TextInsert(part), Attributes: d.Ops[i].Attributes},
 				})
 			}
 		}
@@ -225,7 +225,7 @@ func splitKeepNewlines(s string) []string {
 		return nil
 	}
 	var result []string
-	for len(s) > 0 {
+	for s != "" {
 		idx := strings.IndexByte(s, '\n')
 		if idx < 0 {
 			result = append(result, s)
@@ -252,11 +252,11 @@ func (g *inlineGroup) render(opts *HTMLOptions) string {
 	buf.WriteByte('>')
 
 	// Render ops, skipping trailing newline
-	for i, rop := range g.ops {
-		if i == len(g.ops)-1 && rop.IsNewline {
+	for i := range g.ops {
+		if i == len(g.ops)-1 && g.ops[i].IsNewline {
 			continue
 		}
-		buf.WriteString(renderInlineOp(rop, opts))
+		buf.WriteString(renderInlineOp(g.ops[i], opts))
 	}
 
 	buf.WriteString("</")
@@ -432,8 +432,8 @@ func (g *blockGroup) render(opts *HTMLOptions) string {
 	if len(g.ops) == 0 {
 		buf.WriteString("<br/>")
 	} else {
-		for _, rop := range g.ops {
-			buf.WriteString(renderInlineOp(rop, opts))
+		for i := range g.ops {
+			buf.WriteString(renderInlineOp(g.ops[i], opts))
 		}
 	}
 
@@ -536,7 +536,7 @@ func renderEmbedOp(rop RenderOp, opts *HTMLOptions) string {
 		if alt, ok := rop.Attributes.GetString("alt"); ok {
 			attrs["alt"] = alt
 		}
-		var classes []string
+		classes := make([]string, 0, 1)
 		classes = append(classes, opts.classPrefix()+"-image")
 		attrs["class"] = strings.Join(classes, " ")
 

@@ -1140,8 +1140,8 @@ func TestTelegram_NestedEntities(t *testing.T) {
 	// Bold text with bold+italic inside
 	text := "Hello World Test"
 	entities := []TelegramEntity{
-		{Type: TGBold, Offset: 0, Length: 11},   // "Hello World"
-		{Type: TGItalic, Offset: 6, Length: 5},   // "World"
+		{Type: TGBold, Offset: 0, Length: 11},  // "Hello World"
+		{Type: TGItalic, Offset: 6, Length: 5}, // "World"
 	}
 	d := FromTelegram(text, entities)
 

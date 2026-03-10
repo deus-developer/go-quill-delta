@@ -44,9 +44,9 @@ var (
 	ReHexColor   = regexp.MustCompile(`^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$`)
 	ReColorName  = regexp.MustCompile(`^[a-zA-Z]{1,50}$`)
 	ReRGBColor   = regexp.MustCompile(`^rgb\((0|25[0-5]|2[0-4]\d|1\d\d|0?\d?\d),\s*(0|25[0-5]|2[0-4]\d|1\d\d|0?\d?\d),\s*(0|25[0-5]|2[0-4]\d|1\d\d|0?\d?\d)\)$`)
-	ReFontName   = regexp.MustCompile(`^[a-zA-Z\s0-9\- ]{1,30}$`)
+	ReFontName   = regexp.MustCompile(`^[a-zA-Z 0-9\-]{1,30}$`)
 	ReSize       = regexp.MustCompile(`^[a-zA-Z0-9\-]{1,20}$`)
-	ReWidth      = regexp.MustCompile(`^[0-9]*(px|em|%)?$`)
+	ReWidth      = regexp.MustCompile(`^\d*(px|em|%)?$`)
 	ReTarget     = regexp.MustCompile(`^[_a-zA-Z0-9\-]{1,50}$`)
 	ReRel        = regexp.MustCompile(`^[a-zA-Z\s\-]{1,250}$`)
 	ReLang       = regexp.MustCompile(`^[a-zA-Z\s\-\\/+]{1,50}$`)
@@ -177,8 +177,8 @@ func CollapseNewlines(s string, maxN int) string {
 
 // IsDocumentDelta checks if all ops are inserts (required for a document delta).
 func IsDocumentDelta(d *Delta) bool {
-	for _, op := range d.Ops {
-		if !op.Insert.IsSet() {
+	for i := range d.Ops {
+		if !d.Ops[i].Insert.IsSet() {
 			return false
 		}
 	}
@@ -188,8 +188,8 @@ func IsDocumentDelta(d *Delta) bool {
 // WalkAttributes calls fn for every attribute key-value pair across all ops.
 // Return false from fn to stop iteration.
 func WalkAttributes(d *Delta, fn func(opIndex int, key string, val AttrValue) bool) {
-	for i, op := range d.Ops {
-		for k, v := range op.Attributes {
+	for i := range d.Ops {
+		for k, v := range d.Ops[i].Attributes {
 			if !fn(i, k, v) {
 				return
 			}
@@ -200,9 +200,9 @@ func WalkAttributes(d *Delta, fn func(opIndex int, key string, val AttrValue) bo
 // WalkEmbeds calls fn for every embed insert op.
 // Return false from fn to stop iteration.
 func WalkEmbeds(d *Delta, fn func(opIndex int, embed Embed, attrs AttributeMap) bool) {
-	for i, op := range d.Ops {
-		if op.Insert.IsEmbed() {
-			if !fn(i, op.Insert.Embed(), op.Attributes) {
+	for i := range d.Ops {
+		if d.Ops[i].Insert.IsEmbed() {
+			if !fn(i, d.Ops[i].Insert.Embed(), d.Ops[i].Attributes) {
 				return
 			}
 		}
@@ -214,9 +214,10 @@ func WalkEmbeds(d *Delta, fn func(opIndex int, embed Embed, attrs AttributeMap) 
 // This is the universal tool for custom sanitization pipelines.
 func TransformDelta(d *Delta, fn func(op Op, index int) []Op) *Delta {
 	result := New(nil)
-	for i, op := range d.Ops {
-		for _, newOp := range fn(op, i) {
-			result.push(newOp.clone())
+	for i := range d.Ops {
+		newOps := fn(d.Ops[i], i)
+		for j := range newOps {
+			result.push(newOps[j].clone())
 		}
 	}
 	return result

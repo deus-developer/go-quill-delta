@@ -65,22 +65,22 @@ type AttrBuilder struct {
 
 // --- Boolean formats ---
 
-func (b *AttrBuilder) Bold() *AttrBuilder        { b.m["bold"] = BoolAttr(true); return b }
-func (b *AttrBuilder) Italic() *AttrBuilder       { b.m["italic"] = BoolAttr(true); return b }
-func (b *AttrBuilder) Underline() *AttrBuilder    { b.m["underline"] = BoolAttr(true); return b }
-func (b *AttrBuilder) Strike() *AttrBuilder       { b.m["strike"] = BoolAttr(true); return b }
-func (b *AttrBuilder) Code() *AttrBuilder         { b.m["code"] = BoolAttr(true); return b }
-func (b *AttrBuilder) Blockquote() *AttrBuilder   { b.m["blockquote"] = BoolAttr(true); return b }
-func (b *AttrBuilder) CodeBlock() *AttrBuilder    { b.m["code-block"] = BoolAttr(true); return b }
+func (b *AttrBuilder) Bold() *AttrBuilder       { b.m["bold"] = BoolAttr(true); return b }
+func (b *AttrBuilder) Italic() *AttrBuilder     { b.m["italic"] = BoolAttr(true); return b }
+func (b *AttrBuilder) Underline() *AttrBuilder  { b.m["underline"] = BoolAttr(true); return b }
+func (b *AttrBuilder) Strike() *AttrBuilder     { b.m["strike"] = BoolAttr(true); return b }
+func (b *AttrBuilder) Code() *AttrBuilder       { b.m["code"] = BoolAttr(true); return b }
+func (b *AttrBuilder) Blockquote() *AttrBuilder { b.m["blockquote"] = BoolAttr(true); return b }
+func (b *AttrBuilder) CodeBlock() *AttrBuilder  { b.m["code-block"] = BoolAttr(true); return b }
 
 // --- String formats ---
 
-func (b *AttrBuilder) Link(url string) *AttrBuilder       { b.m["link"] = StringAttr(url); return b }
-func (b *AttrBuilder) Color(c string) *AttrBuilder         { b.m["color"] = StringAttr(c); return b }
-func (b *AttrBuilder) Background(c string) *AttrBuilder    { b.m["background"] = StringAttr(c); return b }
-func (b *AttrBuilder) Font(f string) *AttrBuilder          { b.m["font"] = StringAttr(f); return b }
-func (b *AttrBuilder) Align(a string) *AttrBuilder         { b.m["align"] = StringAttr(a); return b }
-func (b *AttrBuilder) Direction(d string) *AttrBuilder     { b.m["direction"] = StringAttr(d); return b }
+func (b *AttrBuilder) Link(url string) *AttrBuilder     { b.m["link"] = StringAttr(url); return b }
+func (b *AttrBuilder) Color(c string) *AttrBuilder      { b.m["color"] = StringAttr(c); return b }
+func (b *AttrBuilder) Background(c string) *AttrBuilder { b.m["background"] = StringAttr(c); return b }
+func (b *AttrBuilder) Font(f string) *AttrBuilder       { b.m["font"] = StringAttr(f); return b }
+func (b *AttrBuilder) Align(a string) *AttrBuilder      { b.m["align"] = StringAttr(a); return b }
+func (b *AttrBuilder) Direction(d string) *AttrBuilder  { b.m["direction"] = StringAttr(d); return b }
 
 // Size sets text size. Standard Quill values: "small", "large", "huge".
 func (b *AttrBuilder) Size(s string) *AttrBuilder { b.m["size"] = StringAttr(s); return b }
@@ -107,14 +107,14 @@ func (b *AttrBuilder) Indent(level int) *AttrBuilder {
 
 // --- Shortcut aliases ---
 
-func (b *AttrBuilder) RTL() *AttrBuilder         { return b.Direction("rtl") }
+func (b *AttrBuilder) RTL() *AttrBuilder          { return b.Direction("rtl") }
 func (b *AttrBuilder) Super() *AttrBuilder        { return b.Script("super") }
 func (b *AttrBuilder) Sub() *AttrBuilder          { return b.Script("sub") }
-func (b *AttrBuilder) OrderedList() *AttrBuilder   { return b.List("ordered") }
-func (b *AttrBuilder) BulletList() *AttrBuilder    { return b.List("bullet") }
-func (b *AttrBuilder) AlignCenter() *AttrBuilder   { return b.Align("center") }
-func (b *AttrBuilder) AlignRight() *AttrBuilder    { return b.Align("right") }
-func (b *AttrBuilder) AlignJustify() *AttrBuilder  { return b.Align("justify") }
+func (b *AttrBuilder) OrderedList() *AttrBuilder  { return b.List("ordered") }
+func (b *AttrBuilder) BulletList() *AttrBuilder   { return b.List("bullet") }
+func (b *AttrBuilder) AlignCenter() *AttrBuilder  { return b.Align("center") }
+func (b *AttrBuilder) AlignRight() *AttrBuilder   { return b.Align("right") }
+func (b *AttrBuilder) AlignJustify() *AttrBuilder { return b.Align("justify") }
 
 // --- Image/video dimensions ---
 
@@ -323,18 +323,18 @@ func (op Op) GetHeight() (string, bool) {
 // Retain and delete ops are skipped — they don't carry text content.
 func (d *Delta) PlainText(embedPlaceholder string) string {
 	n := 0
-	for _, op := range d.Ops {
-		if op.Insert.IsText() {
-			n += len(op.Insert.Text())
-		} else if op.Insert.IsEmbed() {
+	for i := range d.Ops {
+		if d.Ops[i].Insert.IsText() {
+			n += len(d.Ops[i].Insert.Text())
+		} else if d.Ops[i].Insert.IsEmbed() {
 			n += len(embedPlaceholder)
 		}
 	}
 	buf := make([]byte, 0, n)
-	for _, op := range d.Ops {
-		if op.Insert.IsText() {
-			buf = append(buf, op.Insert.Text()...)
-		} else if op.Insert.IsEmbed() {
+	for i := range d.Ops {
+		if d.Ops[i].Insert.IsText() {
+			buf = append(buf, d.Ops[i].Insert.Text()...)
+		} else if d.Ops[i].Insert.IsEmbed() {
 			buf = append(buf, embedPlaceholder...)
 		}
 	}
@@ -350,8 +350,8 @@ func (d *Delta) InsertedText(embedPlaceholder string) string {
 
 // HasInserts returns true if the delta contains any insert operations.
 func (d *Delta) HasInserts() bool {
-	for _, op := range d.Ops {
-		if op.Insert.IsSet() {
+	for i := range d.Ops {
+		if d.Ops[i].Insert.IsSet() {
 			return true
 		}
 	}
@@ -360,8 +360,8 @@ func (d *Delta) HasInserts() bool {
 
 // HasDeletes returns true if the delta contains any delete operations.
 func (d *Delta) HasDeletes() bool {
-	for _, op := range d.Ops {
-		if op.Delete > 0 {
+	for i := range d.Ops {
+		if d.Ops[i].Delete > 0 {
 			return true
 		}
 	}
@@ -370,8 +370,8 @@ func (d *Delta) HasDeletes() bool {
 
 // HasRetains returns true if the delta contains any retain operations.
 func (d *Delta) HasRetains() bool {
-	for _, op := range d.Ops {
-		if op.Retain.IsSet() {
+	for i := range d.Ops {
+		if d.Ops[i].Retain.IsSet() {
 			return true
 		}
 	}
