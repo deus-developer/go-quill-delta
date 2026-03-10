@@ -1,3 +1,3 @@
-module go-quill-delta
+module github.com/deus-developer/go-quill-delta
 
-go 1.26
+go 1.24

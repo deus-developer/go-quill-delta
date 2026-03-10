@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	delta "go-quill-delta"
+	delta "github.com/deus-developer/go-quill-delta"
 )
 
 const maxOps = 10000
