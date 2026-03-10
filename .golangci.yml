@@ -1,0 +1,42 @@
+version: "2"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - gocritic
+    - revive
+    - misspell
+    - unconvert
+    - unparam
+    - prealloc
+
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - hugeParam
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+
+  exclusions:
+    paths:
+      - tmp
+      - examples

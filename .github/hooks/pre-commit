@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+echo "==> golangci-lint"
+golangci-lint run ./...
+
+echo "==> go test -short"
+go test -short -count=1 ./...
+
+echo "==> all checks passed"
